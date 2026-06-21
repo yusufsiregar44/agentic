@@ -4,3 +4,4 @@
 # Format mirrors Ralph's autonomous-run log: one fresh implementation pass per story, TDD red->green->commit.
 
 --- run start ---
+US-001 DONE — scaffold package + label allow-list (ALLOWED set + validate_labels) — 3 tests green
