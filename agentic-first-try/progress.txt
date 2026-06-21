@@ -5,3 +5,4 @@
 
 --- run start ---
 US-001 DONE — scaffold package + label allow-list (ALLOWED set + validate_labels) — 3 tests green
+US-002 DONE — verdict schema validation (validate_verdict + VALID_TYPES/SEVERITY/ROUTES) — 3 tests green
