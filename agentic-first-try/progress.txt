@@ -7,3 +7,4 @@
 US-001 DONE — scaffold package + label allow-list (ALLOWED set + validate_labels) — 3 tests green
 US-002 DONE — verdict schema validation (validate_verdict + VALID_TYPES/SEVERITY/ROUTES) — 3 tests green
 US-003 DONE — read-only filesystem tools (read_file/list_files/grep + READONLY_REGISTRY/SCHEMAS) — 4 tests green
+US-004 DONE — run_command tool for fix-it-man (timeout-bounded) + FIXIT_REGISTRY/SCHEMAS — 7 tests green

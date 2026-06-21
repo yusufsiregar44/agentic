@@ -24,3 +24,18 @@ def test_grep_finds_line(tmp_path):
 
 def test_readonly_registry_has_no_run_command():
     assert "run_command" not in tools.READONLY_REGISTRY
+
+
+def test_run_command_captures_output():
+    out = tools.run_command("echo hello-rca")
+    assert "hello-rca" in out
+
+
+def test_run_command_times_out():
+    out = tools.run_command("sleep 5", timeout=1)
+    assert "timed out" in out.lower()
+
+
+def test_fixit_registry_includes_run_command():
+    assert "run_command" in tools.FIXIT_REGISTRY
+    assert "read_file" in tools.FIXIT_REGISTRY

@@ -72,3 +72,25 @@ READONLY_SCHEMAS = [
 ]
 
 READONLY_REGISTRY = {"read_file": read_file, "list_files": list_files, "grep": grep}
+
+
+import subprocess
+
+
+def run_command(command, timeout=30):
+    """Run a shell command (read-only investigation, e.g. tests). Captures output, enforces a timeout.
+    NOTE: not a true sandbox — v1 relies on author-gating. Hardened in v1.1."""
+    try:
+        proc = subprocess.run(command, shell=True, capture_output=True, text=True, timeout=timeout)
+    except subprocess.TimeoutExpired:
+        return f"Error: command timed out after {timeout}s"
+    output = (proc.stdout + proc.stderr)[:MAX_OUTPUT]
+    return f"exit={proc.returncode}\n{output}"
+
+
+FIXIT_SCHEMAS = READONLY_SCHEMAS + [
+    _schema("run_command", "Run a shell command (e.g. run tests) to investigate. Output is captured.",
+            {"command": {"type": "string"}}, ["command"]),
+]
+
+FIXIT_REGISTRY = {**READONLY_REGISTRY, "run_command": run_command}
