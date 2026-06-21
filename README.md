@@ -2,6 +2,8 @@
 
 Repo to contain my learnings, side projects, and experiments surrounding agentic artificial intelligence.
 
+```
+
 XOXOXOXOXO           __gggrgM**M#mggg__
                 __wgNN@"B*P""mp""@d#"@N#Nw__
               _g#@0F_a*F#  _*F9m_ ,F9*__9NG#g_
@@ -25,3 +27,5 @@ XOXOXOXOXO           __gggrgM**M#mggg__
               9##g_0@q__ #"4_  j*"k __*NF_g#@P"
                 "9NN#gIPNL_ "b@" _2M"Lg#N@F"
                     ""P@*NN#gEZgNN@#@P""
+
+```
