@@ -1,0 +1,6 @@
+# Ralph Progress Log — Agentic Issue-Triage Agent
+# branch: ralph/agentic-issue-triage
+# Each entry: a completed user story (US-###), what shipped, and the verification that gated it.
+# Format mirrors Ralph's autonomous-run log: one fresh implementation pass per story, TDD red->green->commit.
+
+--- run start ---

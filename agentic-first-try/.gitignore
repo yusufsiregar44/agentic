@@ -1,0 +1,7 @@
+# Local Python virtualenv used to run the test suite (not part of the deliverable)
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+# Ephemeral artifact written by run_triage.py at runtime (Stage-1 → Stage-2 handoff)
+verdict.json

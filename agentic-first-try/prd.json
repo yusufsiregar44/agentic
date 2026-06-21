@@ -1,0 +1,184 @@
+{
+  "project": "Agentic Issue-Triage Agent",
+  "branchName": "ralph/agentic-issue-triage",
+  "description": "Ephemeral, read-only GitHub Actions agent that triages issues (classify + label) then dispatches an advisory persona (bug -> fix-it-man RCA, enhancement -> stoic-developer plan), powered by an OSS model via GitHub Models on the built-in GITHUB_TOKEN with zero external secrets. Hand-rolled stateless-model / stateful-harness agent loop in pure Python.",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Scaffold package + label allow-list",
+      "description": "As a maintainer, I need a fixed label vocabulary the agent applies from but never creates, so triage cannot invent labels.",
+      "acceptanceCriteria": [
+        "triage/ package created with empty __init__.py and tests/__init__.py",
+        "requirements.txt pins requests==2.32.3 and pytest==8.3.3",
+        "labels.ALLOWED set + validate_labels() splits proposed labels into (accepted, rejected)",
+        "Off-list labels are rejected, never created; no area:* labels in allow-list",
+        "Tests pass (python -m pytest triage/tests/test_labels.py)"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-002",
+      "title": "Verdict schema validation",
+      "description": "As the pipeline, I need to validate the Stage-1 verdict so a malformed model output never reaches Stage-2.",
+      "acceptanceCriteria": [
+        "schema.validate_verdict(v) returns [] when valid, else a list of error strings",
+        "Bad type/severity/route enums each produce an error; empty comment produces an error; non-list labels produce an error",
+        "Constants VALID_TYPES, VALID_SEVERITY, VALID_ROUTES exported",
+        "Tests pass (python -m pytest triage/tests/test_schema.py)"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-003",
+      "title": "Read-only filesystem tools + schemas",
+      "description": "As the triage agent, I need read_file/list_files/grep tools (truncated, hidden-dir-skipping) plus OpenAI tool schemas and a registry.",
+      "acceptanceCriteria": [
+        "read_file truncates to MAX_OUTPUT; list_files skips hidden dirs; grep returns path:line: text",
+        "READONLY_SCHEMAS (OpenAI tool schemas) + READONLY_REGISTRY exported; finish_schema(properties) helper exported",
+        "READONLY_REGISTRY contains no run_command",
+        "Tests pass (python -m pytest triage/tests/test_tools.py)"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-004",
+      "title": "run_command tool for fix-it-man (timeout-bounded)",
+      "description": "As fix-it-man, I need a bounded run_command so I can run tests during RCA. Flagged: the only non-read-only capability in v1.",
+      "acceptanceCriteria": [
+        "run_command(command, timeout=30) captures stdout+stderr, returns exit code, enforces timeout",
+        "FIXIT_SCHEMAS = READONLY_SCHEMAS + run_command; FIXIT_REGISTRY = read-only + run_command",
+        "Tests pass (python -m pytest triage/tests/test_tools.py, 7 total)"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-005",
+      "title": "GitHub Models HTTP client with 429 backoff",
+      "description": "As the harness, I need a thin raw-HTTP client for GitHub Models (OpenAI-compatible) with exponential 429 backoff.",
+      "acceptanceCriteria": [
+        "call_model(messages, tools, *, max_retries=4, timeout=60) posts to API_URL with Bearer GITHUB_TOKEN + X-GitHub-Api-Version",
+        "Retries on HTTP 429 with exponential backoff; raises RuntimeError after retries exhausted",
+        "Constants API_URL, MODEL (env TRIAGE_MODEL), API_VERSION exported",
+        "Tests pass (python -m pytest triage/tests/test_llm.py)"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-006",
+      "title": "Hand-rolled agent loop with defensive dispatch",
+      "description": "As the system, I need run_agent() that re-sends full history each step (stateless model, stateful harness), with parse_tool_calls isolated and every dispatch branch recoverable.",
+      "acceptanceCriteria": [
+        "run_agent(system_prompt, user_prompt, tools, registry, *, max_steps=12) returns the finish payload",
+        "parse_tool_calls(response) isolates the tool protocol; dispatch() returns (result_str, is_finish, payload) and never crashes on bad tool/args",
+        "Exceeding max_steps raises RuntimeError; unknown tool is recoverable",
+        "Tests pass (python -m pytest triage/tests/test_harness.py)"
+      ],
+      "priority": 6,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-007",
+      "title": "gh-CLI helpers for comments + labels",
+      "description": "As Stage-1/Stage-2, I need write helpers (post_comment, add_labels, has_label) via the gh CLI.",
+      "acceptanceCriteria": [
+        "add_labels builds a gh issue edit ... --add-label command; no-ops on empty labels",
+        "has_label parses gh issue view --json labels output to a bool",
+        "post_comment posts via gh issue comment",
+        "Tests pass (python -m pytest triage/tests/test_github_api.py)"
+      ],
+      "priority": 7,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-008",
+      "title": "Model-agnostic persona prompts (triage + 2 workers)",
+      "description": "As each stage, I need a structured system prompt with a hard output contract: triage classifies+routes; fix-it-man does advisory RCA; stoic-developer does an advisory plan.",
+      "acceptanceCriteria": [
+        "triage/personas/{triage,fix-it-man,stoic-developer}.md exist",
+        "triage prompt names finish, route, severity; worker prompts state the advisory boundary (do not write / do not modify)",
+        "Tests pass (python -m pytest triage/tests/test_personas.py)"
+      ],
+      "priority": 8,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-009",
+      "title": "Stage 1 entrypoint with idempotency + failure backstop",
+      "description": "As the workflow, I need run_triage.main(): run the triage agent, validate the verdict, apply allow-listed labels, comment, write verdict.json, set route output. Idempotent; never silent on failure.",
+      "acceptanceCriteria": [
+        "Happy path: applies accepted labels + 'triaged', drops off-list, comments, writes verdict.json, sets route output",
+        "Already-triaged is a no-op (route=none); failure adds needs-human-triage + fallback comment (route=none)",
+        "Persona loading resolves relative to the module file so it works from any CWD",
+        "Tests pass (python -m pytest triage/tests/test_run_triage.py)"
+      ],
+      "priority": 9,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-010",
+      "title": "Stage 2 advisory worker (route-dispatched persona)",
+      "description": "As the workflow, I need run_worker.main(): load verdict.json, pick the persona by route, run it with the distilled Stage-1 handoff, post its analysis. Never silent on failure.",
+      "acceptanceCriteria": [
+        "PERSONA_BY_ROUTE maps bug->fix-it-man(FIXIT tools), enhancement->stoic-developer(READONLY tools)",
+        "bug route runs fix-it-man and posts the RCA comment; failure posts a fallback comment",
+        "Full suite passes (python -m pytest triage/tests -v)"
+      ],
+      "priority": 10,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-011",
+      "title": "Idempotent label setup script",
+      "description": "As the operator, I need a one-time idempotent script to pre-create the seven non-default labels in the repo.",
+      "acceptanceCriteria": [
+        "triage/setup-labels.sh creates severity:*, regression, triaged, needs-human-triage via gh label create --force",
+        "Script is set -euo pipefail and re-runnable; reads REPO from env",
+        "Shell parses cleanly (bash -n triage/setup-labels.sh)"
+      ],
+      "priority": 11,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-012",
+      "title": "Two-job issue-triage workflow (author-gated, route-gated)",
+      "description": "As the repo, I need .github/workflows/issue-triage.yml wiring env -> run_triage/run_worker, gating on author association + route, passing verdict.json via artifact, least-privilege permissions.",
+      "acceptanceCriteria": [
+        "triage job author-gated (OWNER/MEMBER/COLLABORATOR), outputs route; worker job gated on route in (bug, enhancement)",
+        "permissions: models:read, issues:write, contents:read only; verdict.json passed via upload/download-artifact",
+        "Workflow YAML is valid"
+      ],
+      "priority": 12,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-013",
+      "title": "End-to-end verification runbook + top-level overview doc",
+      "description": "As the author, I need a documented eval battery (bug/enhancement/question/idempotency/backstop/zero-secrets) and a high-level OVERVIEW so I can learn how the system is built and how it works.",
+      "acceptanceCriteria": [
+        "OVERVIEW.md explains the architecture, the per-file map, and what each step does (learning-oriented)",
+        "A runbook documents the Task-13 live checks (cannot run in CI here; requires push + GitHub Models access)",
+        "Full suite still green (python -m pytest triage/tests -v)"
+      ],
+      "priority": 13,
+      "passes": false,
+      "notes": ""
+    }
+  ]
+}
