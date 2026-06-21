@@ -79,21 +79,27 @@ The model can't *do* anything — it can only emit text. We give it **tools** (J
 
 ## See it run locally, end to end
 
-The fastest way to understand the flow is to watch it execute. `local_run.py` runs **both stages for real** against a tiny sample repo with a planted bug — narrated step by step:
+The fastest way to understand the flow is to watch it execute. `local_run.py` runs **both stages against a tiny sample repo with a planted bug**, narrated step by step. It has two model modes:
 
 ```bash
-.venv/bin/python local_run.py
+.venv/bin/python local_run.py                      # REAL GitHub Models API (default if config.json has a PAT)
+.venv/bin/python local_run.py --scripted           # offline, deterministic (a fixed fake model)
+.venv/bin/python local_run.py --model openai/gpt-4o-mini   # override the model
 ```
 
-**Only the model is faked** (a `ScriptedModel` returns a fixed sequence of tool-calls — that's the one thing that would otherwise hit the network). Everything else is the real code path: the agent loop, the real `read_file`/`grep`/`run_command` tools (it actually runs `pytest` on the planted bug and sees the `KeyError`), schema validation, the label allow-list (watch it drop an off-list `wontfix` label), the `verdict.json` handoff, and the route gate. GitHub writes run in **dry-run mode** (`TRIAGE_DRY_RUN=1`): `github_api` builds the real `gh` command and **logs** it instead of executing, so nothing touches a live repo.
+**What's always real, in both modes:** the agent loop, the real `read_file`/`grep`/`run_command` tools (it actually runs `pytest` on the planted bug and sees the `KeyError`), schema validation, the label allow-list, the `verdict.json` handoff, and the route gate.
 
-What the trace shows you, in order:
-1. **Idempotency check** — `gh issue view ... --json labels` (dry-run); not yet triaged, so proceed.
-2. **Stage-1 loop** — `list_files → read_file → grep → finish`, with each step logging the model's request (full history re-sent) and the tool result.
-3. **Label filtering + writes** — the dry-run `gh issue edit` applies only allow-listed labels (`bug`, `severity:high`, `triaged`); `wontfix` is dropped. A `gh issue comment` posts the triage note. `route=bug` is written to `GITHUB_OUTPUT`.
-4. **Stage-2 loop** — route `bug` selects fix-it-man (with `run_command`), which reads the file, **runs the tests for real**, and posts an RCA.
+**What differs:**
+- `--real` (default): calls the live API. The model genuinely explores the repo, classifies, and decides — you watch it pick tools, sometimes imperfectly, and recover. The PAT is read from `config.json` (`{"pat": "github_pat_…", "model": "optional/override"}`); `config.json` is **gitignored** and never printed.
+- `--scripted`: no network. A `ScriptedModel` returns a canned tool-call sequence (it even proposes an off-list `wontfix` label so you can watch the allow-list drop it) — deterministic, free, and offline.
 
-This maps 1:1 onto what the GitHub Actions workflow does — the workflow just supplies real env vars, a real model, and a real `gh`. Artifacts land in the gitignored `.local-demo/` so you can inspect `verdict.json` and the sample repo afterward.
+**What's never live, in either mode:** GitHub writes. `TRIAGE_DRY_RUN=1` makes `github_api` build the *real* `gh` command and **log** it instead of executing — there's no real issue locally, and nothing is mutated.
+
+The log lines are prefixed by source so the flow reads top-to-bottom: `triage.llm │ → POST …` (a model request) and `← model: tool_calls=[…]` (its decision), `triage.harness │ step N: …` (the loop + each tool result), `triage.github_api │ [dry-run] would run: gh …` (a write that was logged, not executed).
+
+**Model & rate limits:** the demo defaults to `openai/gpt-4o-mini` (reliable tool-calling, friendlier free-tier limits, so a multi-step loop completes). `deepseek/DeepSeek-V3-0324` — the plan/CI default — also tool-calls, but the free tier rate-limits it hard; you'll see the `429` backoff fire (and, if it can't recover, the "never silent" backstop apply `needs-human-triage`). Set `{"model": "deepseek/DeepSeek-V3-0324"}` in `config.json` to try it. (Auth needs a PAT with the `models` scope — see GitHub Models → *Developer settings* → fine-grained PAT.)
+
+This maps 1:1 onto what the GitHub Actions workflow does — the workflow just supplies a real `GITHUB_TOKEN`, a real model, and a real `gh`. Artifacts land in the gitignored `.local-demo/sample_repo/` so you can inspect `verdict.json` afterward.
 
 ## Build status
 
