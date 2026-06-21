@@ -15,7 +15,7 @@
         "Tests pass (python -m pytest triage/tests/test_labels.py)"
       ],
       "priority": 1,
-      "passes": false,
+      "passes": true,
       "notes": ""
     },
     {
@@ -29,7 +29,7 @@
         "Tests pass (python -m pytest triage/tests/test_schema.py)"
       ],
       "priority": 2,
-      "passes": false,
+      "passes": true,
       "notes": ""
     },
     {
@@ -43,7 +43,7 @@
         "Tests pass (python -m pytest triage/tests/test_tools.py)"
       ],
       "priority": 3,
-      "passes": false,
+      "passes": true,
       "notes": ""
     },
     {
@@ -56,7 +56,7 @@
         "Tests pass (python -m pytest triage/tests/test_tools.py, 7 total)"
       ],
       "priority": 4,
-      "passes": false,
+      "passes": true,
       "notes": ""
     },
     {
@@ -70,7 +70,7 @@
         "Tests pass (python -m pytest triage/tests/test_llm.py)"
       ],
       "priority": 5,
-      "passes": false,
+      "passes": true,
       "notes": ""
     },
     {
@@ -84,7 +84,7 @@
         "Tests pass (python -m pytest triage/tests/test_harness.py)"
       ],
       "priority": 6,
-      "passes": false,
+      "passes": true,
       "notes": ""
     },
     {
@@ -98,7 +98,7 @@
         "Tests pass (python -m pytest triage/tests/test_github_api.py)"
       ],
       "priority": 7,
-      "passes": false,
+      "passes": true,
       "notes": ""
     },
     {
@@ -111,7 +111,7 @@
         "Tests pass (python -m pytest triage/tests/test_personas.py)"
       ],
       "priority": 8,
-      "passes": false,
+      "passes": true,
       "notes": ""
     },
     {
