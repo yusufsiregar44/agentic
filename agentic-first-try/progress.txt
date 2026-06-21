@@ -12,3 +12,4 @@ US-005 DONE — GitHub Models HTTP client (call_model + 429 exponential backoff)
 US-006 DONE — hand-rolled agent loop (run_agent + parse_tool_calls + dispatch) — 3 tests green
 US-007 DONE — gh-CLI helpers for GitHub write ops (post_comment/add_labels/has_label) — 3 tests green
 US-008 DONE — model-agnostic persona prompts (triage + fix-it-man + stoic-developer) — 3 tests green
+US-009 DONE — Stage 1 entrypoint (run_triage.py): idempotency guard, verdict validation, label filtering, failure backstop; DEVIATION: load_persona uses _PERSONA_DIR = Path(__file__).resolve().parent / "personas" (module-relative, not CWD-relative) so tests using monkeypatch.chdir(tmp_path) don't FileNotFoundError — 3 tests green
