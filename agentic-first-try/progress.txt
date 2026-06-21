@@ -15,3 +15,4 @@ US-008 DONE — model-agnostic persona prompts (triage + fix-it-man + stoic-deve
 US-009 DONE — Stage 1 entrypoint (run_triage.py): idempotency guard, verdict validation, label filtering, failure backstop; DEVIATION: load_persona uses _PERSONA_DIR = Path(__file__).resolve().parent / "personas" (module-relative, not CWD-relative) so tests using monkeypatch.chdir(tmp_path) don't FileNotFoundError — 3 tests green
 US-010 DONE — Stage 2 advisory worker (run_worker.py): route→persona dispatch via PERSONA_BY_ROUTE, failure backstop, same module-relative load_persona deviation; minor test lambda fix (setdefault→update in test spy to avoid truthy short-circuit) — 2 tests green; full suite 30/30 green
 US-011 DONE — idempotent label setup script (bash -n clean) — not executed (live op)
+US-012 DONE — two-job issue-triage workflow (author+route gated, yaml ok) — not pushed (live op)

@@ -1,0 +1,67 @@
+# Orchestrator for the two-stage agentic issue-triage system.
+# Two gates: (1) author-association (OWNER/MEMBER/COLLABORATOR only); (2) route from Stage 1.
+# Zero external secrets — auth is the built-in GITHUB_TOKEN (models:read, issues:write, contents:read).
+# DEPLOYMENT NOTE: GitHub Actions only auto-triggers when this file and triage/ live at the real
+# repository root; here they are nested under agentic-first-try/ as a self-contained learning artifact.
+
+name: Issue Triage
+
+on:
+  issues:
+    types: [opened, reopened]
+
+concurrency:
+  group: triage-${{ github.event.issue.number }}
+  cancel-in-progress: false
+
+permissions:
+  models: read
+  issues: write
+  contents: read
+
+jobs:
+  triage:
+    # Author gate — only owner/member/collaborator issues are auto-triaged in v1.
+    if: contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.issue.author_association)
+    runs-on: ubuntu-latest
+    outputs:
+      route: ${{ steps.triage.outputs.route }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install -r triage/requirements.txt
+      - id: triage
+        run: python -m triage.run_triage
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+          ISSUE_BODY: ${{ github.event.issue.body }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: verdict
+          path: verdict.json
+          if-no-files-found: ignore
+
+  worker:
+    needs: triage
+    if: needs.triage.outputs.route == 'bug' || needs.triage.outputs.route == 'enhancement'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install -r triage/requirements.txt
+      - uses: actions/download-artifact@v4
+        with: { name: verdict }
+      - run: python -m triage.run_worker
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+          ISSUE_BODY: ${{ github.event.issue.body }}
