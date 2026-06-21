@@ -74,8 +74,26 @@ The model can't *do* anything — it can only emit text. We give it **tools** (J
 
 ```bash
 # from this directory (agentic-first-try/), with the local venv:
-.venv/bin/python -m pytest triage/tests -v          # 30 passed
+.venv/bin/python -m pytest triage/tests -v          # 31 passed
 ```
+
+## See it run locally, end to end
+
+The fastest way to understand the flow is to watch it execute. `local_run.py` runs **both stages for real** against a tiny sample repo with a planted bug — narrated step by step:
+
+```bash
+.venv/bin/python local_run.py
+```
+
+**Only the model is faked** (a `ScriptedModel` returns a fixed sequence of tool-calls — that's the one thing that would otherwise hit the network). Everything else is the real code path: the agent loop, the real `read_file`/`grep`/`run_command` tools (it actually runs `pytest` on the planted bug and sees the `KeyError`), schema validation, the label allow-list (watch it drop an off-list `wontfix` label), the `verdict.json` handoff, and the route gate. GitHub writes run in **dry-run mode** (`TRIAGE_DRY_RUN=1`): `github_api` builds the real `gh` command and **logs** it instead of executing, so nothing touches a live repo.
+
+What the trace shows you, in order:
+1. **Idempotency check** — `gh issue view ... --json labels` (dry-run); not yet triaged, so proceed.
+2. **Stage-1 loop** — `list_files → read_file → grep → finish`, with each step logging the model's request (full history re-sent) and the tool result.
+3. **Label filtering + writes** — the dry-run `gh issue edit` applies only allow-listed labels (`bug`, `severity:high`, `triaged`); `wontfix` is dropped. A `gh issue comment` posts the triage note. `route=bug` is written to `GITHUB_OUTPUT`.
+4. **Stage-2 loop** — route `bug` selects fix-it-man (with `run_command`), which reads the file, **runs the tests for real**, and posts an RCA.
+
+This maps 1:1 onto what the GitHub Actions workflow does — the workflow just supplies real env vars, a real model, and a real `gh`. Artifacts land in the gitignored `.local-demo/` so you can inspect `verdict.json` and the sample repo afterward.
 
 ## Build status
 

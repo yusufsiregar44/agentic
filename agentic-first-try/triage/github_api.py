@@ -8,12 +8,23 @@ Fit: run_triage.py calls all three; run_worker.py calls post_comment. Both stage
      with respect to the repository — only issue metadata is mutated.
 Design: _gh() centralises the subprocess invocation so the three public functions stay DRY and
         testable (monkeypatch subprocess.run, not shell commands).
+Dry-run: set TRIAGE_DRY_RUN=1 and _gh() builds the REAL gh argv but LOGS it instead of executing
+         — lets you run the whole pipeline locally (see local_run.py) without mutating a repo.
 """
 import json
+import logging
+import os
 import subprocess
+
+log = logging.getLogger(__name__)
 
 
 def _gh(args):
+    """Run a gh subcommand. In TRIAGE_DRY_RUN mode, log the exact command and skip execution
+    (returning an empty success) so no live GitHub state is touched."""
+    if os.environ.get("TRIAGE_DRY_RUN"):
+        log.info("[dry-run] would run: gh %s", " ".join(args))
+        return subprocess.CompletedProcess(args, returncode=0, stdout="", stderr="")
     return subprocess.run(["gh", *args], capture_output=True, text=True, check=True)
 
 

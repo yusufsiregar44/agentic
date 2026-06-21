@@ -10,7 +10,10 @@ Design: parse_tool_calls() is isolated so swapping the tool-call protocol (e.g. 
         tool_calls → prompted-JSON) requires touching exactly ONE function, not the loop.
 """
 import json
+import logging
 from triage.llm import call_model
+
+log = logging.getLogger(__name__)
 
 
 def parse_tool_calls(response):
@@ -37,23 +40,38 @@ def dispatch(name, raw_args, registry):
 
 
 def run_agent(system_prompt, user_prompt, tools, registry, *, max_steps=12):
+    # Logging is silent unless a handler is configured (off in CI/tests, on in local_run.py),
+    # so these calls narrate the loop locally at zero cost in production.
+    log.info("run_agent start: %d tool(s) available, max_steps=%d", len(tools), max_steps)
     messages = [
         {"role": "system", "content": system_prompt},
         {"role": "user", "content": user_prompt},
     ]
-    for _ in range(max_steps):
-        response = call_model(messages, tools)
+    for step in range(1, max_steps + 1):
+        response = call_model(messages, tools)            # re-sends FULL history every step
         message = response["choices"][0]["message"]
         messages.append(message)
         calls = parse_tool_calls(response)
         if not calls:
+            log.info("step %d: model returned no tool call — nudging it to use one", step)
             messages.append({"role": "user",
                              "content": "Use a tool, or call finish with your result."})
             continue
+        log.info("step %d: model requested %s", step, [c["function"]["name"] for c in calls])
         for call in calls:
             fn = call["function"]
             result, is_finish, payload = dispatch(fn["name"], fn.get("arguments"), registry)
             if is_finish:
+                log.info("step %d: finish() called — returning payload (keys=%s)",
+                         step, sorted(payload) if isinstance(payload, dict) else type(payload).__name__)
                 return payload
+            log.info("step %d:   %s(%s) -> %s", step, fn["name"],
+                     (fn.get("arguments") or "")[:120], _preview(result))
             messages.append({"role": "tool", "tool_call_id": call["id"], "content": result})
     raise RuntimeError(f"Agent exceeded max_steps ({max_steps}) without calling finish")
+
+
+def _preview(text, limit=160):
+    """One-line, length-bounded preview of a tool result for readable logs."""
+    flat = " ".join(str(text).split())
+    return flat if len(flat) <= limit else flat[:limit] + " …"
