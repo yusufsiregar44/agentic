@@ -74,9 +74,24 @@ The model can't *do* anything — it can only emit text. We give it **tools** (J
 
 ```bash
 # from this directory (agentic-first-try/), with the local venv:
-.venv/bin/python -m pytest triage/tests -v
+.venv/bin/python -m pytest triage/tests -v          # 30 passed
 ```
+
+## Build status
+
+**All 12 implementation tasks built and unit-tested — 30 tests green; the package byte-compiles cleanly.** Built TDD-style (red → green → commit) with one commit per task; the Ralph `prd.json` tracks each story (`passes: true`) and `progress.txt` is the run log. The live end-to-end battery (US-013) can't run inside this build (it needs a real repo + GitHub Models access) — it's captured as **[RUNBOOK.md](RUNBOOK.md)**.
+
+### How to deploy
+
+GitHub Actions only auto-triggers from `.github/` at the **repository root**, and the workflow runs `python -m triage.run_triage` (so `triage/` must be importable from the checkout root). This project lives under `agentic-first-try/` as a self-contained learning artifact. To actually run it, relocate `triage/` and `.github/` to the repo root — see **[RUNBOOK.md](RUNBOOK.md) §0**.
+
+## Deviations from the plan (and why)
+
+Two intentional changes were made to the plan's literal code; both are documented in-file and in `progress.txt`:
+
+1. **Module-relative `load_persona` (`run_triage.py`, `run_worker.py`).** The plan loaded personas from a CWD-relative path (`triage/personas/{name}.md`). That's a latent bug: the plan's own entrypoint tests `chdir` into a temp dir, and `load_persona()` is evaluated for real to build the (mocked) `run_agent` argument — so the path wouldn't resolve and the happy-path tests would fail. Fix: resolve relative to the module file (`Path(__file__).resolve().parent / "personas"`), which also makes the CI runner robust to its working directory.
+2. **Worker test return value (`test_run_worker.py`).** The plan's mock used `dict.setdefault(...) or {...}`; `setdefault` returns the stored (truthy) persona string, so `or` short-circuited and the mock returned the string instead of the intended `{"comment": ...}` dict — the test would `TypeError`. Fix: `dict.update(...) or {...}` (`update` returns `None`, so `or` reaches the dict). Same intent, correct behavior.
 
 ## Status / scope
 
-This is **v1: read-only and advisory.** Stage 2 *describes* fixes and plans; it never writes code or opens PRs. The one execution capability (`run_command`) is timeout-bounded and gated behind author-association. See the bottom of this doc (and the per-file headers) for the v1.1 hardening notes. The live end-to-end battery (US-013) is documented as a runbook — it requires pushing to a real repo with GitHub Models access, which can't run inside this build.
+This is **v1: read-only and advisory.** Stage 2 *describes* fixes and plans; it never writes code or opens PRs. The one execution capability (`run_command`) is timeout-bounded and gated behind author-association. v1.1 notes (carried from the plan): a code-writing stoic-developer behind a draft-PR + human-review gate; untrusted-input hardening to open triage to outside contributors; real sandboxing for `run_command`; severity-based worker gating and `area:*` routing labels.
