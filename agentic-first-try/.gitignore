@@ -1,0 +1,12 @@
+# Local Python virtualenv used to run the test suite (not part of the deliverable)
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+# Ephemeral artifact written by run_triage.py at runtime (Stage-1 → Stage-2 handoff)
+verdict.json
+# Scratch space + planted sample repo created by local_run.py (the local end-to-end demo)
+.local-demo/
+# SECRETS — never commit. config.json holds a GitHub PAT for the local real-model run.
+config.json
+*.pat
